@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Атлас Сибирской смуты</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Атлас Сибирской смуты">
+    <meta property="og:description" content="Интерактивная историческая карта Гражданской войны в Сибири 1918–1922 гг.">
+    <meta property="og:image" content="https://anton-palich.github.io/kartaGV/assets/images/preview.jpg">
+    <meta property="og:url" content="https://anton-palich.github.io/kartaGV/">
+    <meta property="og:type" content="website">
+
+    <!-- Шрифты -->
+    <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Playfair+Display:ital,wght@0,700;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Плагины Leaflet -->
+    <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-extra-markers@1.2.2/dist/css/leaflet.extra-markers.min.css">
+    <script src="https://unpkg.com/leaflet-extra-markers@1.2.2/dist/js/leaflet.extra-markers.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://unpkg.com/leaflet-hash@0.2.1/leaflet-hash.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-side-by-side@2.0.1/leaflet-side-by-side.css" />
+    <script src="https://unpkg.com/leaflet-side-by-side@2.0.1/leaflet-side-by-side.min.js"></script>
+
+    <!-- Excel (SheetJS) -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+
+    <!-- Векторные тайлы (опционально, для слоя сигнализации) -->
+    <script src="https://unpkg.com/leaflet-vector-grid@1.0.0/dist/Leaflet.VectorGrid.min.js"></script>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Основной CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ============================================================
+    ЗАЩИТА: создаём фиктивную кнопку compareBtn, чтобы избежать ошибок
+    ============================================================ -->
+    <script>
+        (function() {
+            if (!document.getElementById('compareBtn')) {
+                var dummy = document.createElement('button');
+                dummy.id = 'compareBtn';
+                dummy.style.display = 'none';
+                document.body.appendChild(dummy);
+            }
+        })();
+    </script>
+
+    <!-- ============================================================
+    ШАПКА
+    ============================================================ -->
+    <header class="header" role="banner">
+        <div class="wrap">
+            <div class="header-inner">
+                <div class="header-left-group">
+                    <button id="sidebarToggleBtn" class="btn-design" aria-label="Открыть список меток"><i class="fa fa-bars"></i></button>
+                    <button id="toggleModeBtn" class="btn-design" aria-label="Переключить режим"><i class="fa fa-search"></i> Исследователь</button>
+                    <button id="builderBtn" class="btn-design" aria-label="Открыть конструктор"><i class="fa fa-paint-brush"></i> Конструктор</button>
+                    <button id="zoomTextBtn" class="btn-design" aria-label="Увеличить текст"><i class="fa fa-search-plus"></i> Лупа 2x</button>
+                </div>
+
+                <div class="header-center-group">
+                    <div class="logo"><a href="#" id="logoText">Атлас Сибирской смуты<br><span>1918–1922 гг.</span></a></div>
+                    <div class="header-quote" id="headerQuoteBlock">
+                        <i>«В Сибири решается судьба России...»</i><br>
+                        <small>«Сибирская жизнь», 1918</small>
+                    </div>
+                </div>
+
+                <nav class="nav header-right-group" role="navigation">
+                    <ul>
+                        <li id="aboutNavBtn"><a href="#about" class="btn-design"><i class="fa fa-info-circle"></i> О проекте</a></li>
+                        <li id="materialsNavBtn"><a href="#materials" class="btn-design"><i class="fa fa-folder-open"></i> Материалы</a></li>
+                        <li id="faqNavBtn"><a href="#faq" class="btn-design"><i class="fa fa-question-circle"></i> FAQ</a></li>
+                        <li class="social-dropdown">
+                            <a href="#" class="social-toggle btn-design" aria-haspopup="true"><i class="fa fa-share-alt"></i> Соцсети ▾</a>
+                            <div class="social-list" role="menu">
+                                <a href="https://vk.com/club240166804" target="_blank" role="menuitem"><i class="fa-brands fa-vk"></i> ВКонтакте</a>
+                                <a href="#" role="menuitem" id="cooperationBtn"><i class="fa fa-handshake"></i> Сотрудничество</a>
+                            </div>
+                        </li>
+                        <li><button id="shareBtn" class="btn-design" aria-label="Поделиться"><i class="fa fa-share-nodes"></i> Поделиться</button></li>
+                    </ul>
+                </nav>
+            </div>
+
+            <!-- Панель загрузки данных -->
+            <div class="control-panel" id="controlPanel">
+                <div class="wrap">
+                    <div class="panel-inner">
+                        <label><i class="fa fa-file-import"></i> Данные:</label>
+                        <input type="text" id="dataUrl" placeholder="Ссылка на GeoJSON, KML, GPX, CSV, KMZ, XLSX">
+                        <button id="loadData" class="btn-green"><i class="fa fa-upload"></i> Загрузить</button>
+                        <button id="clearData" class="btn-red"><i class="fa fa-trash"></i> Удалить</button>
+                        <span class="hint">или перетащите файл на карту</span>
+                        <button id="saveDrawingsBtn" class="btn-green"><i class="fa fa-download"></i> Скачать рис.</button>
+                        <button id="printBtn" class="btn-green"><i class="fa fa-print"></i> Печать</button>
+                        <span id="loadingIndicator" style="display:none;"><i class="fa fa-spinner fa-pulse"></i></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================================
+    ПАНЕЛЬ ФИЛЬТРОВ
+    ============================================================ -->
+    <div class="filter-panel" id="filterPanel" role="region" aria-label="Фильтры">
+        <div class="wrap">
+            <div class="filter-inner">
+                <div class="filter-categories-wrap">
+                    <button class="filter-categories-toggle" id="categoriesToggle" aria-expanded="false">
+                        <i class="fa fa-filter"></i> Категории <i class="fa fa-chevron-down" style="font-size:0.6rem;"></i>
+                    </button>
+                    <div class="filter-categories-dropdown" id="categoriesDropdown" role="list">
+                        <label><input type="checkbox" class="category-checkbox" value="battle" checked> <span class="cat-icon">⚔</span> Боевые действия</label>
+                        <label><input type="checkbox" class="category-checkbox" value="route" checked> <span class="cat-icon">🚂</span> Маршруты армий</label>
+                        <label><input type="checkbox" class="category-checkbox" value="memorial" checked> <span class="cat-icon">🏛</span> Памятные места</label>
+                        <label><input type="checkbox" class="category-checkbox" value="person" checked> <span class="cat-icon">👤</span> Персоналии</label>
+                    </div>
+                </div>
+
+                <button id="legendBtn" class="filter-legend-btn"><i class="fa fa-book"></i> Легенда</button>
+
+                <div class="filter-time-group">
+                    <span class="time-label"><i class="fa fa-calendar"></i> Время:</span>
+                    <div class="time-pills" id="yearPills"></div>
+                    <span style="color:var(--ink-light);font-size:0.6rem;">/</span>
+                    <div class="time-pills" id="monthPills"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    ОСНОВНОЙ МАКЕТ
+    ============================================================ -->
+    <div class="main-layout">
+        <aside class="sidebar" id="sidebar" role="complementary">
+            <div class="sidebar-header">
+                <h2><i class="fa fa-list"></i> Метки</h2>
+                <span class="close-sidebar" id="closeSidebarBtn">&times;</span>
+                <div class="search-box"><i class="fa fa-search"></i><input type="text" id="searchInput" placeholder="Поиск по названию..."></div>
+                <div class="search-box" style="margin-top:4px;"><i class="fa fa-globe"></i><input type="text" id="locationSearchInput" placeholder="Найти место..."><button id="locationSearchBtn" class="btn-green" style="font-size:0.55rem;padding:0.05rem 0.4rem;">Искать</button></div>
+            </div>
+            <div class="sidebar-list" id="sidebarList" role="list"></div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <main id="map" role="application" aria-label="Историческая карта"></main>
+
+        <!-- Кнопка показа/скрытия панели слоёв -->
+        <button id="layersToggleBtn" aria-label="Показать слои">
+            <i class="fa fa-layer-group"></i> Слои
+        </button>
+    </div>
+
+    <!-- ============================================================
+    НИЖНЯЯ ИНФОРМАЦИОННАЯ ПАНЕЛЬ
+    ============================================================ -->
+    <div id="infoPanel" class="info-panel">
+        <div class="info-panel-header">
+            <h2 id="infoPanelTitle"></h2>
+            <div class="info-panel-actions">
+                <button id="infoPanelCloseBtn" class="btn-design" title="Закрыть"><i class="fa fa-times"></i></button>
+                <button id="infoPanelCopyBtn" class="btn-design" title="Скопировать ссылку"><i class="fa fa-link"></i></button>
+                <button id="infoPanelEditBtn" class="btn-design" title="Редактировать метку" style="display:none;"><i class="fa fa-pen-to-square"></i></button>
+            </div>
+        </div>
+        <div class="info-panel-body">
+            <div class="info-panel-coords" id="infoPanelCoords"></div>
+            <div class="info-panel-content" id="infoPanelContent"></div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    БЛОК ДЛЯ ПЕЧАТИ (виден только при печати)
+    ============================================================ -->
+    <div id="printFooter" style="display:none;">
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:5px;">
+            <div>
+                <strong>Атлас Сибирской смуты</strong><br>
+                Гражданская война в Сибири 1918–1922 гг.
+            </div>
+            <div>
+                Координаты центра: <span id="printCenter"></span><br>
+                Масштаб: <span id="printZoom"></span>
+            </div>
+            <div>
+                Дата печати: <span id="printDate"></span><br>
+                <span id="printLayers"></span>
+            </div>
+        </div>
+        <div style="margin-top:4px; font-size:0.7em; opacity:0.7; border-top:1px solid #ccc; padding-top:4px;">
+            <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a> · 
+            <a href="https://anton-palich.github.io/kartaGV/">Атлас Сибирской смуты</a> · 
+            © <span id="printYear"></span>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    МОДАЛКИ
+    ============================================================ -->
+
+    <!-- Сотрудничество -->
+    <div id="cooperationModal" class="modal" role="dialog">
+        <div class="modal-content paper-style" style="max-width:480px;">
+            <span class="close" id="closeCooperationBtn">&times;</span>
+            <div style="text-align:center;margin-bottom:0.8rem;">
+                <i class="fa fa-handshake" style="font-size:2.4rem;color:var(--red-ink);"></i>
+            </div>
+            <h2 style="text-align:center;border-bottom:none;font-family:var(--logo-font);letter-spacing:0.06em;">Приглашение к сотрудничеству</h2>
+            <div style="font-size:0.9rem;line-height:1.6;color:var(--ink);padding:0.2rem 0 0.8rem;text-align:center;">
+                <p style="margin-bottom:0.6rem;">
+                    <strong>Атлас Сибирской смуты</strong> — это живой исследовательский проект.
+                    Мы всегда открыты к диалогу с историками, краеведами, архивистами и всеми,
+                    кто неравнодушен к истории Гражданской войны в Сибири.
+                </p>
+                <p style="margin-bottom:0.6rem;">
+                    Если у вас есть архивные материалы, фотографии, воспоминания или вы хотите
+                    дополнить карту — напишите нам.
+                </p>
+                <p style="margin-bottom:0.8rem;font-family:var(--logo-font);font-size:0.85rem;color:var(--red-ink);">
+                    <i class="fa fa-envelope"></i> potilitsintoha@xmail.ru
+                </p>
+                <a href="mailto:potilitsintoha@xmail.ru" class="btn-green" style="display:inline-block;padding:0.4rem 1.2rem;font-size:0.85rem;text-decoration:none;color:#fff;">
+                    <i class="fa fa-paper-plane"></i> Написать письмо
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Легенда -->
+    <div id="legendModal" class="modal" role="dialog">
+        <div class="modal-content paper-style" style="max-width:400px;">
+            <span class="close" id="closeLegendBtn">&times;</span>
+            <h2>Условные обозначения</h2>
+            <div id="legendContent"></div>
+            <div id="railwayLegend" style="display:none;">
+                <h3>Железные дороги (OpenRailwayMap)</h3>
+                <div class="railway-legend-content"></div>
+            </div>
+            <div id="vectorSignalLegend" style="display:none;">
+                <h3>Сигнализация (вектор)</h3>
+                <div class="vector-signal-legend-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ -->
+    <div id="faqModal" class="modal" role="dialog">
+        <div class="modal-content paper-style" style="max-width:600px;">
+            <span class="close" id="closeFaqBtn">&times;</span>
+            <h2>Часто задаваемые вопросы</h2>
+            <div class="faq-list"></div>
+        </div>
+    </div>
+
+    <!-- О проекте -->
+    <div id="aboutModal" class="modal" role="dialog">
+        <div class="modal-content paper-style">
+            <span class="close" id="closeAboutBtn">&times;</span>
+            <h2>О проекте</h2>
+            <p id="aboutP1"><strong>Атлас Сибирской смуты</strong> – интерактивная карта, посвящённая крупнейшему военному событию в истории нашего региона.</p>
+            <p id="aboutP2">«Атлас Сибирской смуты» – просветительский исторический проект, созданный студентами-исследователями для всех, кто изучает трагические события Гражданской войны 1918–1922 годов на территории Сибири.</p>
+            <p id="aboutP3">На интерактивной карте собраны свидетельства из мемуаров, архивных документов, а также результаты полевых экспедиций и археологических разведок. Метки, линии фронтов и районы боевых действий позволяют наглядно представить ход Гражданской войны в Сибири.</p>
+            <p id="aboutP4">Проект некоммерческий и ориентирован на школьников, студентов, преподавателей и учёных. Материалы будут пополняться и уточняться – мы приглашаем к сотрудничеству историков, краеведов и всех заинтересованных.</p>
+        </div>
+    </div>
+
+    <!-- Соглашение -->
+    <div id="termsModal" class="modal" role="dialog">
+        <div class="modal-content paper-style" style="max-width:700px;">
+            <span class="close" id="closeTermsBtn">&times;</span>
+            <h2>Пользовательское соглашение</h2>
+            <div style="max-height:60vh;overflow-y:auto;padding-right:10px;font-size:0.8rem;">
+                <p><strong>Последнее обновление: 13 июля 2026 г.</strong></p>
+                <p>Настоящее соглашение регулирует использование интерактивной исторической карты «Атлас Сибирской смуты» (далее – «Проект»). Используя Проект, вы полностью принимаете изложенные ниже условия.</p>
+                <h3 style="font-family:var(--logo-font);font-size:0.85rem;margin:0.5rem 0 0.2rem;">1. Авторские права</h3>
+                <p>Все тексты, изображения, архивные документы, картографические данные, дизайн и программный код, размещённые в Проекте, являются объектами авторского права и принадлежат авторам Проекта, если не указано иное. Любое копирование, воспроизведение, распространение или переработка материалов без письменного разрешения правообладателей запрещены.</p>
+                <h3 style="font-family:var(--logo-font);font-size:0.85rem;margin:0.5rem 0 0.2rem;">2. Лицензия на контент</h3>
+                <p>Материалы Проекта распространяются на условиях лицензии <strong>Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)</strong>. Это означает, что вы можете:</p>
+                <ul style="padding-left:1.2rem;margin:0.2rem 0;">
+                    <li><strong>Делиться</strong> – копировать и распространять материал на любом носителе и в любом формате.</li>
+                    <li><strong>Адаптировать</strong> – изменять, преобразовывать и создавать производные произведения.</li>
+                </ul>
+                <p>При обязательном соблюдении следующих условий:</p>
+                <ul style="padding-left:1.2rem;margin:0.2rem 0;">
+                    <li><strong>Указание авторства</strong> – вы должны указать название Проекта, авторов и ссылку на лицензию.</li>
+                    <li><strong>Некоммерческое использование</strong> – вы не вправе использовать материалы в коммерческих целях.</li>
+                </ul>
+                <p>Полный текст лицензии: <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.ru" target="_blank">CC BY-NC 4.0</a>.</p>
+                <h3 style="font-family:var(--logo-font);font-size:0.85rem;margin:0.5rem 0 0.2rem;">3. Использование картографических подложек</h3>
+                <p>Картографические данные предоставлены OpenStreetMap, Esri и другими сервисами в соответствии с их условиями использования. Атрибуция (упоминание источников) является обязательной и не может быть удалена или скрыта.</p>
+                <h3 style="font-family:var(--logo-font);font-size:0.85rem;margin:0.5rem 0 0.2rem;">4. Запрещённые действия</h3>
+                <ul style="padding-left:1.2rem;margin:0.2rem 0;">
+                    <li>Удалять или скрывать знаки авторства, водяные знаки, ссылки на лицензию.</li>
+                    <li>Использовать автоматизированные средства для массового копирования данных (парсинг).</li>
+                    <li>Применять материалы Проекта в коммерческих продуктах, рекламе, платных услугах без отдельного соглашения с авторами.</li>
+                </ul>
+                <h3 style="font-family:var(--logo-font);font-size:0.85rem;margin:0.5rem 0 0.2rem;">5. Ответственность</h3>
+                <p>Авторы не несут ответственности за возможный ущерб, связанный с использованием Проекта. Все данные предоставляются «как есть». Историческая информация может уточняться и изменяться.</p>
+                <h3 style="font-family:var(--logo-font);font-size:0.85rem;margin:0.5rem 0 0.2rem;">6. Контакты</h3>
+                <p>Для получения разрешения на коммерческое использование или по иным вопросам обращайтесь через сообщения сообщества ВКонтакте: <a href="https://vk.com/club240166804" target="_blank">vk.com/club240166804</a> или по электронной почте: <a href="mailto:potilitsintoha@xmail.ru">potilitsintoha@xmail.ru</a>.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Редактор метки -->
+    <div id="markerEditorModal" class="modal" role="dialog">
+        <div class="modal-content paper-style" style="max-width:800px;display:flex;flex-wrap:wrap;gap:0.8rem;">
+            <span class="close" id="closeMarkerEditor">&times;</span>
+            <h2 style="width:100%;">✏️ Свойства метки</h2>
+            <div style="flex:1 1 260px;">
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Название:</label>
+                <input type="text" id="markerTitle" placeholder="Название события или объекта" style="width:100%;">
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Категория:</label>
+                <select id="markerCategory" style="width:100%;">
+                    <option value="battle">Боевые действия</option>
+                    <option value="route">Маршруты армий</option>
+                    <option value="memorial">Памятные места</option>
+                    <option value="person">Персоналии</option>
+                </select>
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Год:</label>
+                <input type="number" id="markerYear" min="1918" max="1922" placeholder="1918" style="width:90px;">
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Месяц:</label>
+                <select id="markerMonth" style="width:90px;"></select>
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Описание (Markdown):</label>
+                <textarea id="markerDescription" rows="4" style="width:100%;" placeholder="**жирный**, ## заголовок, ![фото](url)"></textarea>
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Фото (URL):</label>
+                <input type="text" id="markerImage" placeholder="https://..." style="width:100%;">
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Видео (YouTube):</label>
+                <input type="text" id="markerVideo" placeholder="https://..." style="width:100%;">
+                <label style="display:block;font-size:0.7rem;margin-top:0.2rem;">Цвет:</label>
+                <input type="color" id="markerColor" value="#8b1a1a" style="width:50px;">
+                <div style="margin-top:0.4rem;display:flex;gap:0.4rem;">
+                    <button id="saveMarkerBtn" class="btn-green">Сохранить</button>
+                    <button id="cancelMarkerBtn" class="btn-red">Отмена</button>
+                </div>
+            </div>
+            <div style="flex:1 1 260px;border:1px solid var(--paper-border);padding:0.6rem;background:#fffdf7;border-radius:var(--radius);min-height:180px;">
+                <h4 style="font-family:var(--logo-font);font-size:0.75rem;letter-spacing:0.04em;">Предпросмотр</h4>
+                <div id="markerPreview" aria-live="polite"><em>Введите данные</em></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Материалы -->
+    <div id="materialsModal" class="modal" role="dialog">
+        <div class="modal-content paper-style" style="max-width:800px;">
+            <span class="close" id="closeMaterialsBtn">&times;</span>
+            <h2>Материалы</h2>
+            <div class="materials-search"><i class="fa fa-search"></i><input type="text" id="materialsSearchInput" placeholder="Искать..."></div>
+            <div class="materials-tabs" role="tablist"></div>
+            <div class="materials-filters" style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.6rem;"></div>
+            <div class="materials-content"></div>
+        </div>
+    </div>
+
+    <!-- Конструктор -->
+    <div id="builderPanel" class="design-panel" style="display:none;">
+        <div class="wrap">
+            <h3>🛠️ Конструктор</h3>
+            <div class="builder-tabs" id="builderTabs"></div>
+            <div class="builder-content" id="builderContent"></div>
+            <div class="builder-actions">
+                <button id="saveAllBtn" class="btn-green"><i class="fa fa-save"></i> Сохранить ВСЁ</button>
+                <button id="closeBuilderBtn" class="btn-red"><i class="fa fa-times"></i> Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ФУТЕР -->
+    <footer class="footer" role="contentinfo">
+        <div class="wrap">
+            <div class="footer-inner">
+                <div class="footer-left">
+                    <span class="footer-logo">Атлас Сибирской смуты</span>
+                    <span class="footer-desc">Гражданская война 1918–1922 гг.</span>
+                    <span class="footer-copy">© <span id="currentYear"></span> · <a href="#" id="footerAboutLink">О проекте</a> · <a href="#" id="footerFaqLink">FAQ</a> · <a href="#" id="footerTermsLink">Соглашение</a> · <a href="https://vk.com/club240166804" target="_blank">ВКонтакте</a> · <a href="#" id="footerCooperationLink">Сотрудничество</a></span>
+                </div>
+                <div class="footer-license">
+                    <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="license"><i class="fa fa-creative-commons"></i> CC BY-NC 4.0</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Шаблоны -->
+    <template id="sidebarItemTemplate">
+        <div class="sidebar-item">
+            <span class="sidebar-item-title"></span>
+            <span class="sidebar-item-cat"></span>
+            <span class="sidebar-item-coords"></span>
+        </div>
+    </template>
+    <template id="materialCardTemplate">
+        <div class="material-card">
+            <div class="material-thumb"></div>
+            <div class="material-info">
+                <h4></h4>
+                <p></p>
+                <span class="material-date"></span>
+            </div>
+        </div>
+    </template>
+
+    <!-- Модальное окно "Поделиться" -->
+    <div id="shareModal" class="modal" role="dialog">
+        <div class="modal-content paper-style" style="max-width:400px;">
+            <span class="close" id="closeShareBtn">&times;</span>
+            <h2>Поделиться</h2>
+            <div style="display:flex; flex-direction:column; gap:0.8rem;">
+                <a id="shareVK" href="#" target="_blank" class="btn-design" style="text-align:center;"><i class="fa-brands fa-vk"></i> ВКонтакте</a>
+                <a id="shareTG" href="#" target="_blank" class="btn-design" style="text-align:center;"><i class="fa-brands fa-telegram"></i> Telegram</a>
+                <a id="shareCopy" href="#" class="btn-design" style="text-align:center;"><i class="fa fa-copy"></i> Скопировать ссылку</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    ПОДКЛЮЧЕНИЕ МОДУЛЕЙ (в правильном порядке)
+    ============================================================ -->
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/draw.js"></script>
+    <script src="js/filters.js"></script>
+    <script src="js/builder.js"></script>
+    <script src="js/materials.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- ============================================================
+    ДОПОЛНИТЕЛЬНЫЕ СКРИПТЫ (годы, управление слоями, защита)
+    ============================================================ -->
+    <script>
+        (function() {
+            // ---------- 1. Добавление "г." к годам в фильтрах (без дублей) ----------
+            function addYearSuffix() {
+                var pills = document.querySelectorAll('#yearPills .time-pill');
+                pills.forEach(function(pill) {
+                    var text = pill.textContent.trim();
+                    if (!/\d\s*г\.?$/.test(text) && text !== 'Все') {
+                        var clean = text.replace(/\s*г\.?$/g, '');
+                        pill.textContent = clean + ' г.';
+                    }
+                });
+            }
+
+            if (document.readyState === 'complete') {
+                addYearSuffix();
+            } else {
+                window.addEventListener('load', addYearSuffix);
+            }
+
+            var yearPillsContainer = document.getElementById('yearPills');
+            if (yearPillsContainer) {
+                var observer = new MutationObserver(function() {
+                    setTimeout(addYearSuffix, 50);
+                });
+                observer.observe(yearPillsContainer, { childList: true, subtree: true });
+            }
+
+            // ---------- 2. Управление панелью слоёв ----------
+            var toggleBtn = document.getElementById('layersToggleBtn');
+            var layersControlElement = null;
+
+            function findLayersContainer() {
+                return document.querySelector('.leaflet-control-layers');
+            }
+
+            function initLayersToggle() {
+                layersControlElement = findLayersContainer();
+                if (!layersControlElement) {
+                    setTimeout(initLayersToggle, 300);
+                    return;
+                }
+                layersControlElement.classList.remove('open');
+
+                if (toggleBtn) {
+                    toggleBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (!layersControlElement) {
+                            layersControlElement = findLayersContainer();
+                            if (!layersControlElement) return;
+                        }
+                        layersControlElement.classList.toggle('open');
+                        if (layersControlElement.classList.contains('open')) {
+                            toggleBtn.innerHTML = '<i class="fa fa-layer-group"></i> Скрыть слои';
+                        } else {
+                            toggleBtn.innerHTML = '<i class="fa fa-layer-group"></i> Слои';
+                        }
+                    });
+
+                    document.addEventListener('click', function(e) {
+                        if (layersControlElement && layersControlElement.classList.contains('open')) {
+                            var target = e.target;
+                            if (!layersControlElement.contains(target) && target !== toggleBtn && !toggleBtn
+                                .contains(target)) {
+                                layersControlElement.classList.remove('open');
+                                toggleBtn.innerHTML = '<i class="fa fa-layer-group"></i> Слои';
+                            }
+                        }
+                    });
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initLayersToggle);
+            } else {
+                initLayersToggle();
+            }
+
+            var bodyObserver = new MutationObserver(function() {
+                var container = findLayersContainer();
+                if (container && container !== layersControlElement) {
+                    layersControlElement = container;
+                    if (toggleBtn && toggleBtn.innerHTML.includes('Скрыть')) {
+                        toggleBtn.innerHTML = '<i class="fa fa-layer-group"></i> Слои';
+                    }
+                    container.classList.remove('open');
+                }
+            });
+            bodyObserver.observe(document.body, { childList: true, subtree: true });
+
+            // ---------- 3. Защита ----------
+            var compareBtn = document.getElementById('compareBtn');
+            if (compareBtn && !compareBtn._listenersAdded) {
+                compareBtn.addEventListener('click', function() {});
+                compareBtn._listenersAdded = true;
+            }
+        })();
+    </script>
+
+</body>
+</html>
